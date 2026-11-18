@@ -2,7 +2,7 @@
 # Reset the CoreS3 and (re)start the background serial log capture.
 # Wi-Fi SSID lines are filtered out before anything is written.
 ROOT=${0:A:h:h}
-LOG=${SERIAL_LOG:-/private/var/folders/v9/6bdxf7bx7fj967wbg6x_jdrr0000gn/T/opencode/serial.log}
+LOG=${SERIAL_LOG:-$ROOT/serial.log}
 PY=~/.espressif/python_env/idf5.4_py3.12_env/bin/python
 
 pkill -f serial_log.py

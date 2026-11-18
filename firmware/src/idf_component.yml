@@ -1,0 +1,8 @@
+dependencies:
+  idf:
+    version: ">=4.1.0"
+  # Camera + esp32-camera sharing the internal I2C bus is known to work up to
+  # 0.2.10 (https://github.com/devemin/CoreS3_human_face_detect).
+  m5stack/m5unified: ">=0.2.4,<=0.2.10"
+  espressif/esp32-camera: "^2.1.4"
+  espressif/human_face_detect: "^0.5.2"

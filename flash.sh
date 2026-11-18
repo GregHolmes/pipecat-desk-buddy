@@ -24,7 +24,17 @@ export PIPECAT_SMALLWEBRTC_URL="http://${MAC_IP}:7860/api/offer"
 export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"
 source ~/esp/esp-idf/export.sh >/dev/null
 
-cd "$ROOT/pipecat-esp32/esp32-m5stack-cores3"
+# Our fixes to upstream libpeer (pinned in third_party/) live as patches.
+LIBPEER="$ROOT/third_party/pipecat-esp32/esp32-s3-box-3/deps/libpeer"
+for p in "$ROOT"/firmware/patches/*.patch; do
+  if git -C "$LIBPEER" apply --check "$p" 2>/dev/null; then
+    git -C "$LIBPEER" apply "$p" && echo "applied $(basename "$p")"
+  elif ! git -C "$LIBPEER" apply --reverse --check "$p" 2>/dev/null; then
+    echo "patch $(basename "$p") doesn't apply; is the submodule at the pinned commit?"; exit 1
+  fi
+done
+
+cd "$ROOT/firmware"
 echo "server: $PIPECAT_SMALLWEBRTC_URL"
 
 # Only ever talk to the CoreS3, never other serial devices (e.g. headsets).

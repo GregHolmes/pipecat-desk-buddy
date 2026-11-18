@@ -1,0 +1,30 @@
+From cdbcebda8ed20f08dfd2f76076f7c611c8dd792c Mon Sep 17 00:00:00 2001
+From: Greg Holmes <greg.holmes@deepgram.com>
+Date: Wed, 18 Nov 2026 12:23:50 +0000
+Subject: [PATCH] sctp: skip chunk padding when walking bundled chunks
+
+---
+ src/sctp.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/sctp.c b/src/sctp.c
+index 644f8d8..b3cce18 100644
+--- a/src/sctp.c
++++ b/src/sctp.c
+@@ -408,7 +408,12 @@ void sctp_incoming_data(Sctp* sctp, char* buf, size_t len) {
+       dtls_srtp_write(sctp->dtls_srtp, sctp->buf, length);
+       // sctp_outgoing_data_cb(sctp, sctp->buf, SCTP_MTU, 0, 0);
+     }
+-    pos += ntohs(chunk_common->length);
++    // Chunk length excludes padding; bundled chunks start on 4-byte
++    // boundaries, so skip the padding too or the next chunk is misread.
++    uint16_t chunk_length = ntohs(chunk_common->length);
++    if (chunk_length < sizeof(SctpChunkCommon))
++      break;
++    pos += 4 * ((chunk_length + 3) / 4);
+   }
+ #endif
+ }
+-- 
+2.54.0 (Apple Git-157)
+

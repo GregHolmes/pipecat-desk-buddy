@@ -1,5 +1,5 @@
-# Firmware lives in its own repo (branch hackathon/desk-buddy)
-pipecat-esp32/
+# Local dev clone of pipecat-esp32 used during the hackathon (not part of the repo)
+/pipecat-esp32/
 
 # Secrets
 .env
@@ -12,3 +12,12 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Firmware build output (ESP-IDF)
+firmware/build/
+firmware/managed_components/
+firmware/sdkconfig
+firmware/sdkconfig.old
+
+# Local scratch
+*.log

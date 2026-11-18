@@ -1,0 +1,6 @@
+# ESP-IDF Partition Table
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+# 6MB app: esp-dl and the face detection model don't fit in the stock 1.5MB.
+factory,  app,  factory, 0x10000, 0x600000,
