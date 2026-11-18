@@ -32,6 +32,7 @@ from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+from pipecat.services.deepgram.flux.tts import DeepgramFluxTTSService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.turns.user_turn_strategies import (
@@ -91,12 +92,24 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ),
     )
 
-    tts = DeepgramTTSService(
-        api_key=os.environ["DEEPGRAM_API_KEY"],
-        settings=DeepgramTTSService.Settings(
-            voice=os.getenv("AURA_VOICE", "aura-2-thalia-en"),
-        ),
-    )
+    # Deepgram Flux TTS by default: conversation-native (keeps tone across
+    # turns on one connection) and streams LLM tokens as they arrive.
+    # DESK_BUDDY_TTS=aura switches back to Aura-2.
+    if os.getenv("DESK_BUDDY_TTS", "flux") == "aura":
+        tts = DeepgramTTSService(
+            api_key=os.environ["DEEPGRAM_API_KEY"],
+            settings=DeepgramTTSService.Settings(
+                voice=os.getenv("AURA_VOICE", "aura-2-thalia-en"),
+            ),
+        )
+    else:
+        tts = DeepgramFluxTTSService(
+            api_key=os.environ["DEEPGRAM_API_KEY"],
+            settings=DeepgramFluxTTSService.Settings(
+                voice=os.getenv("FLUX_TTS_VOICE", "flux-kit-en"),
+                expressivity=int(os.getenv("FLUX_TTS_EXPRESSIVITY", "1")),
+            ),
+        )
 
     llm = AnthropicLLMService(
         api_key=os.environ["ANTHROPIC_API_KEY"],
