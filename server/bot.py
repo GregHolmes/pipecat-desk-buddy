@@ -26,6 +26,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     UserTurnStoppedMessage,
 )
 from pipecat.processors.frameworks.rtvi import RTVIObserverParams, RTVIServerMessageFrame
+from pipecat.processors.frameworks.rtvi.observer import RTVIFunctionCallReportLevel
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.anthropic.llm import AnthropicLLMService
@@ -39,13 +40,20 @@ from pipecat.turns.user_turn_strategies import (
 )
 from pipecat.workers.runner import WorkerRunner
 
+from tools import TOOLS
+
 load_dotenv(override=True)
 
 SYSTEM_PROMPT = (
     "You are Desk Buddy, a small, cheerful robot that lives on a desk and talks "
     "through a tiny speaker. Your replies are spoken aloud, so never use emojis, "
     "lists or formatting. Keep every reply to one or two short sentences. "
-    "Be warm, curious and a little playful."
+    "Be warm, curious and a little playful. "
+    "You have tools for the weather, the current time, and searching the web. "
+    "Use them whenever the user asks about weather, time, news, or anything "
+    "current or factual you aren't sure about; never say you can't look things "
+    "up. Before a web search, say a very short phrase like 'let me look that up'. "
+    "The user is in the UK unless they say otherwise."
 )
 
 transport_params = {
@@ -92,7 +100,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # own it ends the turn there. The LLM turn-completion gate holds turns
     # the LLM judges incomplete, so the bot waits while the face shows
     # thinking, then "oh, go on" when the user carries on.
-    context = LLMContext()
+    context = LLMContext(tools=TOOLS)
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
@@ -131,6 +139,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             user_input_enabled=False,
             user_mute_enabled=False,
             metrics_enabled=False,
+            # Names only (no arguments/results): the face shows which tool runs.
+            function_call_report_level={"*": RTVIFunctionCallReportLevel.NAME},
         ),
         idle_timeout_secs=runner_args.pipeline_idle_timeout_secs,
         processor_unusable_policy=ProcessorUnusablePolicy.END,
