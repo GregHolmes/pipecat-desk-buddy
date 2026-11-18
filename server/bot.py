@@ -163,16 +163,35 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         logger.info("Turn resumed")
         await send_face_event(service, "turn_resumed")
 
+    # Flux committed a turn the LLM gate may hold as incomplete. If Flux starts
+    # a new turn before the user turn is finalised, the user carried on.
+    flux_turn_pending = False
+
+    @stt.event_handler("on_start_of_turn")
+    async def on_start_of_turn(service, transcript):
+        if flux_turn_pending:
+            logger.info("User carried on after an incomplete turn")
+            await send_face_event(service, "turn_resumed")
+
     @stt.event_handler("on_end_of_turn")
     async def on_end_of_turn(service, transcript):
+        nonlocal flux_turn_pending
+        flux_turn_pending = True
         logger.info(f"Flux end of turn: [{transcript}]")
 
     @user_aggregator.event_handler("on_user_turn_stopped")
     async def on_user_turn_stopped(aggregator, strategy, message: UserTurnStoppedMessage):
+        nonlocal flux_turn_pending
+        flux_turn_pending = False
         logger.info(f"Transcript: user: {message.content}")
 
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_assistant_turn_stopped(aggregator, message: AssistantTurnStoppedMessage):
+        nonlocal flux_turn_pending
+        # A held incomplete turn yields an empty assistant turn; only a real
+        # reply (including a "still there?" nudge) ends the pending turn.
+        if message.content and message.content.strip():
+            flux_turn_pending = False
         logger.info(f"Transcript: assistant: {message.content}")
 
     await runner.run()
