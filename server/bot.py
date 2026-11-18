@@ -15,7 +15,7 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMRunFrame, TTSSpeakFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker, ProcessorUnusablePolicy
 from pipecat.processors.aggregators.llm_response_universal import (
@@ -57,6 +57,11 @@ SYSTEM_PROMPT = (
     "face already shows the user you're looking. "
     "The user is in the UK unless they say otherwise."
 )
+
+PRESENCE_LINES = {
+    "user_left": "Oh, where have you gone?",
+    "user_returned": "Oh, hello!",
+}
 
 transport_params = {
     "webrtc": lambda: TransportParams(
@@ -159,6 +164,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         if msg.type == "interrupt":
             logger.info("Device tapped: interrupting the bot")
             await rtvi.interrupt_bot()
+        elif msg.type in PRESENCE_LINES:
+            # The device's camera saw the user leave / come back.
+            logger.info(f"Presence: {msg.type}")
+            await worker.queue_frames([TTSSpeakFrame(PRESENCE_LINES[msg.type])])
         else:
             logger.info(f"Client message: {msg.type} {msg.data}")
 
