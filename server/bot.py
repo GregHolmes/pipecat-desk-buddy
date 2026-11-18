@@ -60,7 +60,7 @@ SYSTEM_PROMPT = (
 
 PRESENCE_LINES = {
     "user_left": "Oh, where have you gone?",
-    "user_returned": "Oh, hello!",
+    "user_returned": "Oh, there you are!",
 }
 
 transport_params = {
