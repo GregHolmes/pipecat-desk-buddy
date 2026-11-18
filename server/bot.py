@@ -73,7 +73,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm = AnthropicLLMService(
         api_key=os.environ["ANTHROPIC_API_KEY"],
         settings=AnthropicLLMService.Settings(
-            model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-5-5"),
+            model=os.getenv("DESK_BUDDY_LLM_MODEL", "claude-haiku-5-5"),
             system_instruction=SYSTEM_PROMPT,
         ),
     )

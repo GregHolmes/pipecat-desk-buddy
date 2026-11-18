@@ -24,7 +24,7 @@ export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"
 source ~/esp/esp-idf/export.sh >/dev/null
 
 cd "$ROOT/pipecat-esp32/esp32-m5stack-cores3"
-echo "SSID: $WIFI_SSID | server: $PIPECAT_SMALLWEBRTC_URL"
+echo "server: $PIPECAT_SMALLWEBRTC_URL"
 
 case "${1:-all}" in
   build) idf.py build ;;
