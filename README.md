@@ -57,7 +57,6 @@ firmware/          CoreS3 firmware (our modified copy of pipecat-esp32's CoreS3 
 third_party/       pipecat-esp32 upstream as a submodule (pinned), for its shared components
 tools/             bot.sh (run the bot), reset.sh + serial_log.py (reset and log the device)
 flash.sh           build + flash the firmware
-docs/              FRICTION_LOG.md (feedback for the Pipecat team), HANDOVER.md (plan and status)
 ```
 
 ## Running it
@@ -107,7 +106,7 @@ Build switches (env vars for `flash.sh`): `FACE_TRACK_OFF=1` (no camera), `FACE_
 
 ## What we had to fix (and whose code it was)
 
-The CoreS3 firmware worked out of the box, but adding a reactive face exposed several bugs. All are fixed here (`firmware/`, `firmware/patches/`, `server/`) and written up in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
+The CoreS3 firmware worked out of the box, but adding a reactive face exposed several bugs. All are fixed here (`firmware/`, `firmware/patches/`, `server/`).
 
 Where the code lives:
 
@@ -129,7 +128,7 @@ Where the code lives:
 | Bot greeted before the device was ready | `client-ready` was never sent | pipecat-esp32 (`rtvi.cpp`) | Sent when the data channel opens; the bot greets on `on_client_ready` |
 | Slow reconnects after reboots | Every failure path calls `esp_restart()` without disconnecting from the AP. **We** also made it worse by turning Wi-Fi power save off from boot | pipecat-esp32 (`http.cpp`, `webrtc.cpp`) + ours | Disconnect before restarts; power save off only once the call is up |
 
-Pipecat server feedback (no workaround needed in pipecat-esp32, details in the friction log): no event when a turn is held as incomplete or resumed, `AnthropicLLMService` can't use Anthropic's server-side tools such as web search (we wrapped it as a function tool), and stopping the dev runner with SIGTERM leaves the active WebRTC session running old code.
+Pipecat server feedback (no workaround needed in pipecat-esp32): no event when a turn is held as incomplete or resumed, `AnthropicLLMService` can't use Anthropic's server-side tools such as web search (we wrapped it as a function tool), and stopping the dev runner with SIGTERM leaves the active WebRTC session running old code.
 
 ## Known limitations
 

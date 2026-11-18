@@ -21,3 +21,6 @@ firmware/sdkconfig.old
 
 # Local scratch
 *.log
+
+# Local working notes (plan, friction log), not published
+notes/
