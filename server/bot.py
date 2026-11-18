@@ -150,6 +150,16 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     await runner.add_workers(worker)
 
+    # The device is half duplex (mic off while it plays), so it can't be
+    # interrupted by voice. Tapping the screen sends an RTVI client-message.
+    @worker.rtvi.event_handler("on_client_message")
+    async def on_client_message(rtvi, msg):
+        if msg.type == "interrupt":
+            logger.info("Device tapped: interrupting the bot")
+            await rtvi.interrupt_bot()
+        else:
+            logger.info(f"Client message: {msg.type} {msg.data}")
+
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info("Client connected")
