@@ -157,6 +157,9 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         rtvi_observer_params=RTVIObserverParams(
             bot_output_enabled=False,
             bot_llm_enabled=False,
+            # Flux TTS streams word by word, so bot-tts-text became one message
+            # per word; the device doesn't use them and the flood stalled it.
+            bot_tts_enabled=False,
             user_llm_enabled=False,
             user_transcription_enabled=False,
             user_input_enabled=False,

@@ -17,7 +17,8 @@ ROOT=${0:A:h}
 MAC_IP=${MAC_IP:-$(ipconfig getifaddr en0)}
 export WIFI_SSID WIFI_PASSWORD
 export PIPECAT_SMALLWEBRTC_URL="http://${MAC_IP}:7860/api/offer"
-export LOG_DATACHANNEL_MESSAGES=1
+# Logs every RTVI message from the WebRTC loop: debug only (LOG_DC=1).
+[[ -n "$LOG_DC" ]] && export LOG_DATACHANNEL_MESSAGES=1 || unset LOG_DATACHANNEL_MESSAGES
 
 # ESP-IDF 5.4.1 was installed with Python 3.12; the default python3 is 3.15.
 export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"
