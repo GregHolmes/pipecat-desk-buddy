@@ -6,7 +6,7 @@ It reacts to the conversation as it happens. It looks like it's thinking when yo
 
 Built in a day at the Pipecat hackathon (18 Nov 2026).
 
-> Demo video: _coming soon_
+https://github.com/user-attachments/assets/a61686dd-69a4-417c-adc1-69774e51519e
 
 ## What it does
 
