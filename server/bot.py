@@ -52,7 +52,9 @@ SYSTEM_PROMPT = (
     "You have tools for the weather, the current time, and searching the web. "
     "Use them whenever the user asks about weather, time, news, or anything "
     "current or factual you aren't sure about; never say you can't look things "
-    "up. Before a web search, say a very short phrase like 'let me look that up'. "
+    "up. When you need a tool, call it immediately in the same response. Never "
+    "say you will look something up without actually calling the tool; your "
+    "face already shows the user you're looking. "
     "The user is in the UK unless they say otherwise."
 )
 
