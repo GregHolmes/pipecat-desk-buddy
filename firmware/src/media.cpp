@@ -125,6 +125,11 @@ static int mic_idx = 0;
 
 bool pipecat_audio_is_playing() { return is_playing; }
 
+// Start the no-audio watchdog as soon as the call connects. It used to arm on
+// the first audio packet only, so a session that died before any audio left
+// the device showing an idle face forever.
+void pipecat_audio_arm_watchdog() { last_audio_ms = esp_timer_get_time() / 1000; }
+
 // Heartbeat for the outgoing (mic) path, logged by the face tracker.
 static std::atomic<uint32_t> frames_sent = 0;
 static std::atomic<int> send_stage = 0;

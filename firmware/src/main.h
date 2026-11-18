@@ -24,6 +24,7 @@ extern void pipecat_init_audio_encoder();
 extern void pipecat_send_audio(PeerConnection *peer_connection);
 extern void pipecat_audio_decode(uint8_t *data, size_t size);
 extern bool pipecat_audio_is_playing();
+extern void pipecat_audio_arm_watchdog();
 // Mic path heartbeat: frames sent; stage 1 touch, 2 mode, 3 record, 4 encode, 5 send, 6 done.
 extern void pipecat_audio_stats(uint32_t *sent, int *stage);
 

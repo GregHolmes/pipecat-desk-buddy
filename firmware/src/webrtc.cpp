@@ -60,6 +60,7 @@ static void pipecat_onconnectionstatechange_task(PeerConnectionState state,
 #ifndef LINUX_BUILD
     pipecat_face_state = FACE_IDLE;
     pipecat_wifi_low_latency();
+    pipecat_audio_arm_watchdog();
     StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
         30000 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     xTaskCreateStaticPinnedToCore(pipecat_send_audio_task, "audio_publisher",
