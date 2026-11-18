@@ -1,0 +1,9 @@
+[project]
+name = "desk-buddy-server"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "loguru>=0.7.3",
+    "pipecat-ai[anthropic,deepgram,runner,webrtc]>=1.16.0",
+    "python-dotenv>=1.2.4",
+]

@@ -1,0 +1,14 @@
+# Firmware lives in its own repo (branch hackathon/desk-buddy)
+pipecat-esp32/
+
+# Secrets
+.env
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
