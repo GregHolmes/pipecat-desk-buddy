@@ -58,9 +58,16 @@ async def send_face_event(service, event: str):
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     logger.info("Starting bot")
 
+    # A higher end-of-turn threshold makes Flux wait through mid-sentence
+    # pauses ("I was wondering..."), which is when the face shows thinking and
+    # then "oh, go on". Eager end of turn still fires early at 0.5.
     stt = DeepgramFluxSTTService(
         api_key=os.environ["DEEPGRAM_API_KEY"],
         enable_eager_end_of_turn=True,
+        settings=DeepgramFluxSTTService.Settings(
+            eager_eot_threshold=float(os.getenv("FLUX_EAGER_EOT_THRESHOLD", "0.5")),
+            eot_threshold=float(os.getenv("FLUX_EOT_THRESHOLD", "0.85")),
+        ),
     )
 
     tts = DeepgramTTSService(
