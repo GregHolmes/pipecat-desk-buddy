@@ -22,6 +22,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     AssistantTurnStoppedMessage,
     LLMContext,
     LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
     UserTurnStoppedMessage,
 )
 from pipecat.processors.frameworks.rtvi import RTVIObserverParams, RTVIServerMessageFrame
@@ -31,6 +32,11 @@ from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
 from pipecat.services.deepgram.tts import DeepgramTTSService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.turns.user_turn_strategies import (
+    FilterIncompleteUserTurnStrategies,
+    MergeMode,
+    UserTurnStrategiesParams,
+)
 from pipecat.workers.runner import WorkerRunner
 
 load_dotenv(override=True)
@@ -58,15 +64,12 @@ async def send_face_event(service, event: str):
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     logger.info("Starting bot")
 
-    # A higher end-of-turn threshold makes Flux wait through mid-sentence
-    # pauses ("I was wondering..."), which is when the face shows thinking and
-    # then "oh, go on". Eager end of turn still fires early at 0.5.
     stt = DeepgramFluxSTTService(
         api_key=os.environ["DEEPGRAM_API_KEY"],
         enable_eager_end_of_turn=True,
         settings=DeepgramFluxSTTService.Settings(
             eager_eot_threshold=float(os.getenv("FLUX_EAGER_EOT_THRESHOLD", "0.5")),
-            eot_threshold=float(os.getenv("FLUX_EOT_THRESHOLD", "0.85")),
+            eot_threshold=float(os.getenv("FLUX_EOT_THRESHOLD", "0.7")),
         ),
     )
 
@@ -85,8 +88,21 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         ),
     )
 
+    # Flux is confident "I was wondering." is a complete sentence, so on its
+    # own it ends the turn there. The LLM turn-completion gate holds turns
+    # the LLM judges incomplete, so the bot waits while the face shows
+    # thinking, then "oh, go on" when the user carries on.
     context = LLMContext()
-    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
+    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(
+            user_turn_strategies=FilterIncompleteUserTurnStrategies(),
+            user_turn_strategies_params=UserTurnStrategiesParams(
+                start_merge_mode=MergeMode.EXTEND,
+                stop_merge_mode=MergeMode.EXTEND,
+            ),
+        ),
+    )
 
     pipeline = Pipeline(
         [
