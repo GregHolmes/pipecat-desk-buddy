@@ -26,9 +26,18 @@ source ~/esp/esp-idf/export.sh >/dev/null
 cd "$ROOT/pipecat-esp32/esp32-m5stack-cores3"
 echo "server: $PIPECAT_SMALLWEBRTC_URL"
 
+# Only ever talk to the CoreS3, never other serial devices (e.g. headsets).
+if [[ "${1:-all}" != build ]]; then
+  PORT=$(ls /dev/cu.usbmodem* 2>/dev/null | head -1)
+  [[ -n "$PORT" ]] || { echo "CoreS3 not found on USB (no /dev/cu.usbmodem*). Is it plugged in?"; exit 1; }
+  export ESPPORT="$PORT"
+fi
+
+# The firmware's CMakeLists reads WIFI_* and PIPECAT_SMALLWEBRTC_URL only at
+# configure time, so always reconfigure or stale values get baked in silently.
 case "${1:-all}" in
-  build) idf.py build ;;
-  flash) idf.py build flash ;;
+  build) idf.py reconfigure build ;;
+  flash) idf.py reconfigure build flash ;;
   monitor) idf.py monitor ;;
-  all) idf.py build flash monitor ;;
+  all) idf.py reconfigure build flash monitor ;;
 esac

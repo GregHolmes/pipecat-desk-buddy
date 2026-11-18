@@ -3,12 +3,16 @@
 Usage: python tools/serial_log.py [seconds] [--no-reset]
 """
 
+import glob
 import sys
 import time
 
 import serial
 
-PORT = "/dev/cu.usbmodem1101"
+ports = sorted(glob.glob("/dev/cu.usbmodem*"))
+if not ports:
+    sys.exit("CoreS3 not found on USB (no /dev/cu.usbmodem*)")
+PORT = ports[0]
 seconds = float(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1][0].isdigit() else 30
 reset = "--no-reset" not in sys.argv
 
