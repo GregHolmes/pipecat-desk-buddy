@@ -10,6 +10,7 @@ Run with the device:  uv run bot.py -t webrtc --esp32 --host <mac-ip>
 Run in a browser:     uv run bot.py
 """
 
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -57,6 +58,8 @@ SYSTEM_PROMPT = (
     "face already shows the user you're looking. "
     "The user is in the UK unless they say otherwise."
 )
+
+GREETING_FALLBACK_SECS = 8
 
 PRESENCE_LINES = {
     "user_left": "Oh, where have you gone?",
@@ -171,13 +174,38 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         else:
             logger.info(f"Client message: {msg.type} {msg.data}")
 
-    @transport.event_handler("on_client_connected")
-    async def on_client_connected(transport, client):
-        logger.info("Client connected")
+    # Greet once the device says it's ready (RTVI client-ready, sent when its
+    # data channel opens). "Connected" fires while the ESP32 is still doing
+    # its DTLS/SCTP setup and dropping packets, which garbled the first second
+    # of the greeting. Fall back to a timer for clients that never send it.
+    greeted = False
+
+    async def greet():
+        nonlocal greeted
+        if greeted:
+            return
+        greeted = True
         context.add_message(
             {"role": "developer", "content": "Say a short hello and introduce yourself."}
         )
         await worker.queue_frames([LLMRunFrame()])
+
+    @worker.rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi):
+        logger.info("Client ready")
+        await greet()
+
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(transport, client):
+        logger.info("Client connected")
+
+        async def fallback_greeting():
+            await asyncio.sleep(GREETING_FALLBACK_SECS)
+            if not greeted:
+                logger.info("No client-ready yet; greeting anyway")
+                await greet()
+
+        asyncio.create_task(fallback_greeting())
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
