@@ -71,7 +71,8 @@ docs/              FRICTION_LOG.md (feedback for the Pipecat team), HANDOVER.md 
 ### 1. Server
 
 ```bash
-git clone --recurse-submodules <this repo>
+git clone --recurse-submodules https://github.com/GregHolmes/pipecat-desk-buddy.git
+cd pipecat-desk-buddy
 cd server
 cp .env.example .env        # add DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
 uv sync                     # Python 3.12, Pipecat 1.16 with deepgram, anthropic, webrtc, runner
