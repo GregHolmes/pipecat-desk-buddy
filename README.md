@@ -105,28 +105,38 @@ cp .wifi.env.example .wifi.env   # 2.4GHz SSID and password
 
 Build switches (env vars for `flash.sh`): `FACE_TRACK_OFF=1` (no camera), `FACE_TRACK_PREVIEW=1` (show the camera image with detection boxes), `LOG_DC=1` (log every RTVI message).
 
-## What we had to fix in pipecat-esp32
+## What we had to fix (and whose code it was)
 
-The CoreS3 firmware worked out of the box, but adding a reactive face exposed several bugs. All are fixed in `firmware/` and written up in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
+The CoreS3 firmware worked out of the box, but adding a reactive face exposed several bugs. All are fixed here (`firmware/`, `firmware/patches/`, `server/`) and written up in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| Crackly bot audio | Every decoded frame went into one reused buffer passed to `M5.Speaker.playRaw()`, which doesn't copy; plus a 2x gain that clipped | Ring buffer + feeder task on a fixed channel, no extra gain |
-| RTVI events lost or 3 to 6s late | libpeer's built-in SCTP ignored chunk padding, so bundled messages were misread and mis-acknowledged | One-line libpeer fix (`firmware/patches`) |
-| Audio underruns, dropped events | One UDP packet read per 15ms loop vs 50+ packets/s, with a 6-slot lwIP mailbox | Loop every 1ms, mailbox of 32 |
-| Mic audio ~37% short and partly torn | An extra 15ms sleep per 20ms frame, and one buffer reused with the asynchronous `M5.Mic.record()` | Real-time pacing, three rotating buffers (50 frames/s) |
-| Device hung mid-call, never recovered | Mic shut down by one task while another was inside `M5.Mic.record()`; no keepalive | One task owns mic/speaker switching; audio watchdog reconnects |
-| Device went deaf after sending a message | libpeer isn't thread-safe; a second task wrote to the data channel | All sends go through the main loop |
-| Choppy audio with Flux TTS | Per-word `bot-tts-text` messages filled a queue the WebRTC loop blocked on | Non-blocking queue; the bot doesn't send `bot-tts-text` |
-| Bot greeted before the device was ready | `client-ready` was never sent | Sent when the data channel opens; the bot greets on `on_client_ready` |
-| Slow reconnects after reboots | Reboots without telling the AP; Wi-Fi power save off while connecting | Disconnect before restarts; power save off only once the call is up |
+Where the code lives:
+
+- **pipecat-esp32** is Pipecat's own firmware ([pipecat-ai/pipecat-esp32](https://github.com/pipecat-ai/pipecat-esp32), MIT, Daily; the CoreS3 board support was added in July 2025). Most of the bugs below are here.
+- **libpeer** is the third-party WebRTC stack ([sepfy/libpeer](https://github.com/sepfy/libpeer)) that pipecat-esp32 pulls in through a Pipecat maintainer's fork ([aconchillo/libpeer](https://github.com/aconchillo/libpeer)). Not Pipecat's code, but Pipecat's dependency.
+- **M5Unified** is M5Stack's hardware library. Its behaviour is documented; the problems came from how pipecat-esp32 uses it.
+- **Pipecat** itself ([pipecat-ai/pipecat](https://github.com/pipecat-ai/pipecat)), the server framework.
+- Two rows were partly **our own doing** while building this, and are marked as such.
+
+| Symptom | Cause | Where | Fix |
+|---|---|---|---|
+| Crackly bot audio | Every decoded frame went into one reused buffer passed to `M5.Speaker.playRaw()`, which doesn't copy; plus a 2x gain that clipped | pipecat-esp32 (`media.cpp`), misusing M5Unified | Ring buffer + feeder task on a fixed channel, no extra gain |
+| RTVI events lost or 3 to 6s late | The built-in SCTP ignored chunk padding, so bundled messages were misread and mis-acknowledged | libpeer (`sctp.c`), shipped via Pipecat's fork | One-line fix in `firmware/patches` |
+| Audio underruns, dropped events | `peer_connection_loop()` reads one UDP packet per call, and the firmware called it every 15ms (50+ packets/s arrive), with a 6-slot lwIP mailbox | pipecat-esp32 (`main.cpp`, `sdkconfig`), on libpeer's design | Loop every 1ms, mailbox of 32 |
+| Mic audio ~37% short and partly torn | An extra 15ms sleep per 20ms frame, and one buffer reused with the asynchronous `M5.Mic.record()` | pipecat-esp32 (`webrtc.cpp`, `media.cpp`) | Real-time pacing, three rotating buffers (50 frames/s) |
+| Device hung mid-call, never recovered | Mic shut down by one task while another was inside `M5.Mic.record()`; no keepalive or media watchdog | pipecat-esp32 (`media.cpp`, `webrtc.cpp`) | One task owns mic/speaker switching; audio watchdog reconnects |
+| Device went deaf after sending a message | libpeer isn't thread-safe, and nothing says so. **We** introduced a second task sending on the data channel | libpeer (undocumented), triggered by our code | All sends go through the main loop |
+| Choppy audio with Flux TTS | Flux TTS streams per word, so Pipecat sent one `bot-tts-text` per word; the firmware's RTVI handler blocks the WebRTC loop when its queue is full | Pipecat (RTVI observer defaults) + pipecat-esp32 (`rtvi.cpp`) | Non-blocking queue; the bot doesn't send `bot-tts-text` |
+| Bot greeted before the device was ready | `client-ready` was never sent | pipecat-esp32 (`rtvi.cpp`) | Sent when the data channel opens; the bot greets on `on_client_ready` |
+| Slow reconnects after reboots | Every failure path calls `esp_restart()` without disconnecting from the AP. **We** also made it worse by turning Wi-Fi power save off from boot | pipecat-esp32 (`http.cpp`, `webrtc.cpp`) + ours | Disconnect before restarts; power save off only once the call is up |
+
+Pipecat server feedback (no workaround needed in pipecat-esp32, details in the friction log): no event when a turn is held as incomplete or resumed, `AnthropicLLMService` can't use Anthropic's server-side tools such as web search (we wrapped it as a function tool), and stopping the dev runner with SIGTERM leaves the active WebRTC session running old code.
 
 ## Known limitations
 
 - **Half duplex:** M5Unified runs the CoreS3 mic and speaker on one I2S bus, so you can't interrupt by voice; tap the screen instead. Full duplex would need custom I2S drivers plus echo cancellation.
 - **Reconnects:** some routers take 30 to 90s to pass traffic again if the device reconnects within seconds of its last session (for example after a flash). A cold power-on is fine.
 - **Face tracking** needs decent light and the CoreS3 angled so your face is mid-frame (the 0.3MP GC0308 is small).
-- "Where have you gone?" / "There you are!" presence lines are built but switched off (`PRESENCE_LINES` in `face_track.cpp`).
+- **Presence lines are switched off.** The device can say "Oh, where have you gone?" when you walk out of view and "Oh, there you are!" when you come back (`PRESENCE_LINES` in `firmware/src/face_track.cpp`, spoken by the bot via `TTSSpeakFrame`). With it on, the face tracker sent those RTVI messages from its own FreeRTOS task while the WebRTC loop was using the connection. libpeer isn't thread-safe, so this corrupted the session: the device went deaf (no audio or events) right after "where have you gone?", and replies around it were garbled. Idle eye glances while nobody was in view added display load at the same moments. Sends now all go through the main loop, which should make it safe, but it wasn't re-tested before submission, so it stays off along with the idle glances (`IDLE_GLANCES` in `face.cpp`).
 
 ## Built with
 
